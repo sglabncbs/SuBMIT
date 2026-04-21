@@ -552,11 +552,23 @@ class Preprocess:
             
             print ("> Determining contacts for %d*%d atom pairs using %.2f A cutoff and %.2f scaling-factor"%(aa_data_xyz0.shape[0],aa_data_xyz.shape[0],cmap.cutoff,cmap.scale))
             for i in trange(aa_data_xyz0.shape[0]):
-                #resgap = 4:CA-CA, 3:CA-CB, 3:CB-CB, 
-                gap=resgap-np.intp(bb_sc+bb_sc0[i]>0) #aa2cg bbsc CA:0,CB:1
-                #resgap 1: P/B/S-P/S/B
-                gap=gap+(1-gap)*int(bb_sc0[i]>=2) #aa2cg bbsc P:5,B:3,S:2
-
+                #aa2cg bbsc CA:0,CB:1 & resgap is 4
+                #gap = 4: CA-CA , 3: CA-CB , 3: CB-CA , 2: CB-CB
+                #gap = 4-(0+0)=4, 4-(0+1)=3, 4-(1+0)=3, 4-(1+1)=2
+                gap=resgap-(bb_sc+bb_sc0[i]) 
+                #aa2cg bbsc P:5,B:3,S:2
+                #resgap 2: P-P, S-P, B-P, S-S
+                #repgap 1: P-S,    , B-S
+                #resgap 1: P-B, S-B, B-B 
+                #gap=gap+(1-gap)*int(bb_sc0[i]>=2) 
+                gap=gap+(1-gap)*int(bb_sc0[i]>=2)
+                gap=gap*(
+                            2*np.intp(bb_sc==5)+\
+                            1*np.intp(bb_sc==3)+\
+                            2*np.intp(bb_sc==2)*np.intp(bb_sc==bb_sc0[i])+\
+                            1*np.intp(bb_sc==2)*np.intp(bb_sc!=bb_sc0[i])
+                        )
+                    
                 if group in ("prot","nucl"): #calculate for intra molecule
                     calculate = np.intp(mol_id==mol_id0[i])*\
                                 np.intp( (np.intp(rnum-gap>=rnum0[i])*np.intp(cid==cid0[i])\
