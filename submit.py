@@ -128,6 +128,7 @@ class CleanUP:
 		self.delFiles(f_suffix="renum.prot.pdb")
 		self.moveFiles(f_suffix=".pdb",f_middle=".renum.",out_subdir="RenumberedPDB_CMap")
 		self.moveFiles(f_suffix=".fa.pdb",out_subdir="RenumberedPDB_CMap")
+		self.moveFiles(f_prefix="modelled.",out_subdir="RenumberedPDB_CMap")
 		self.moveFiles(f_suffix="cont",out_subdir="RenumberedPDB_CMap")
 		self.moveFiles(f_suffix=grosuffix,out_subdir="GRO_TOP_XML")
 		if not gen_cg:
@@ -264,14 +265,14 @@ def main():
 	parser.add_argument("--afsar2008","-afsar2008","--chan2008","-chan2008",action="store_true",help="Zarrine-Afsar et. al. 2008 CA-only + hydrophobic model with . 10.1073/pnas.0801874105")
 	parser.add_argument("--azia2009","-azia2009","--levy2009","-levy2009",action="store_true",help="Azia 2009 CB-CA + Debye-Huckel model. 10.1016/j.jmb.2009.08.010")
 	parser.add_argument("--pal2019","-pal2019","--levy2019","-levy2019",action="store_true",help="Pal & Levy 2019 Protein CB-CA & RNA/DNA P-S-B model. 10.1371/journal.pcbi.1006768")
-	parser.add_argument("--hyeon2006","-hyeon2006","--sop2006","-sop2006",action="store_true",help="Hyeon, Dutta & Thirumalai 2016 SOP CA-only. 10.1016/j.str.2006.09.002")
+	parser.add_argument("--hyeon2006","-hyeon2006","--sop2006","-sop2006",action="store_true",help="Hyeon, Dutta & Thirumalai 2006 SOP CA-only. 10.1016/j.str.2006.09.002")
 	parser.add_argument("--reddy2016","-reddy2016","--maity2016","-maity2016","--sopsc2016","-sopsc2016",action="store_true",help="Maity & Reddy 2016 SOP-SC CA-CB. 10.1021/jacs.5b11300")
 	parser.add_argument("--denesyuk2013","-denesyuk2013","--rna_tis2013","-rna_tis2013",action="store_true",help="Denesyuk & Thirumalai 2013 Three Interaction Site TIS P-S-B model. 10.1021/jp401087x")
 	parser.add_argument("--chakraborty2018","-chakraborty2018","--dna_tis2018","-dna_tis2018",action="store_true",help="Chakraborty & Thirumalai 2018 Three Interaction Site TIS P-S-B model. 10.1021/acs.jctc.8b00091")
 	parser.add_argument("--baul2019","-baul2019","--sop_idp2019","-sop_idp2019",action="store_true",help="Baul et. al. 2019 SOP-SC-IDP CA-CB. 10.1021/acs.jpcb.9b02575")
 	parser.add_argument("--baidya2022","-baidya2022","--sop_idp2022","-sop_idp2022",action="store_true",help="Baidya & Reddy 2022 SOP-SC-IDP CA-CB. 10.1021/acs.jpclett.2c01972")
 	parser.add_argument("--baratam2024","-baratam2024","--sop_multi","-sop_multi",action="store_true",help="Baratam & Srivastava 2024 SOP-MULTI CA-CB. 10.1101/2024.04.29.591764")
-	parser.add_argument("--sop_idr","-sop_idr",action="store_true",help="Reddy-Thiruamalai(SOPSC) + Baidya-Reddy(SOPIDP) hybrid CA-CB")
+	parser.add_argument("--sopsc_idr","-sopsc_idr",action="store_true",help="Maity-Reddy(SOPSC) + Baidya-Reddy(SOPIDP) hybrid CA-CB")
 	parser.add_argument("--banerjee2023","-banerjee2023","--selfpeptide","-selfpeptide",action="store_true",help="Banerjee & Gosavi 2023 Self-Peptide model. 10.1021/acs.jpcb.2c05917")
 	parser.add_argument("--virusassembly","-virusassembly","--capsid","-capsid",action="store_true",help="Preset for structure based virus assembly (inter-Symmetrized)")
 	parser.add_argument("--dlprakash","-dlprakash","--duplexpair","-duplexpair",action="store_true",help="Codon pairs (duplex based weight) for Pal2019")
@@ -456,7 +457,7 @@ def main():
 
 	list_of_protein_presets=[
 		args.clementi2000, args.afsar2008, args.azia2009, args.reddy2016,args.hyeon2006,\
-		args.baul2019, args.baidya2022, args.baratam2024, args.sop_idr]
+		args.baul2019, args.baidya2022, args.baratam2024, args.sopsc_idr]
 	list_of_nucleicacid_presets=[args.denesyuk2013, args.chakraborty2018,args.dlprakash]
 	list_of_hybrid_presets=[args.banerjee2023, args.virusassembly,args.pal2019]
 
@@ -511,6 +512,7 @@ def main():
 		charge.P=True			#charge on P
 		excl_rule=2			# Excl volume Arith. Mean
 		fconst.Kd_prot["mf"]=1.0	#factor to divide 3 multiplicity dihed term
+		fconst.Kd_nucl={"bb":0.9,"sc":1.5,"mf":1.0}
 		prot_contmap.W=False			# contact weight
 		prot_contmap.cutoff=4.5	# cutoff
 		prot_contmap.type=1		# Calculate from all-atom structure
@@ -618,7 +620,7 @@ def main():
 		print (">>> Using Maity & Reddy 2016 SOP-SC model. 10.1021/jacs.5b11300")
 		if args.idp_seq: 
 			print (">>> IDR-sequence given. Using Baidya-Reddy 2022 SOP-SC-IDP model for IDRs")
-			args.sop_idr=True
+			args.sopsc_idr=True
 			pass
 		CGlevel["prot"]=2
 		#if args.opensmog: args.denesyuk2013=True
@@ -677,7 +679,7 @@ def main():
 		ModelDir("reddy2016/sopsc.cgmass.dat").copy2("cgmass.dat")
 		ModelDir("reddy2016/sopsc.btparams.dat").copy2("interactions.nonbond.dat")
 
-	if args.sop_idr:
+	if args.sopsc_idr:
 		print (">>> Using Maity-Reddy SOP-SC for ordered regions and Baidya-Reddy SOP-IDP for IDRs.")
 		CGlevel["prot"]=2
 		#if args.opensmog: args.denesyuk2013=True
@@ -1041,7 +1043,6 @@ def main():
 		nfiles=len(args.aa_pdb)
 		for i in range(nfiles):
 			pdbdata.append(PDB_IO(fileindex=i,nfiles=nfiles))
-			print ("_________BBBBBBBBBBBBBBBBBB_________")
 			pdbdata[-1].loadfile(infile=args.aa_pdb[i],renumber=True,CBgly=CB_gly)
 	elif args.cg_pdb: 
 		nfiles=len(args.cg_pdb)
@@ -1051,15 +1052,15 @@ def main():
 	else:
 		pdbdata=[PDB_IO()]
 		if args.idp_seq:
-			assert args.baul2019 or args.baidya2022 or args.baratam2024 or args.sop_idr,\
-				"Error, building CG PDB using idp_seq only supported with --baul2019 or --baratam2024"
+			assert args.baul2019 or args.baidya2022 or args.baratam2024 or args.sopsc_idr,\
+				"Error, building CG PDB using idp_seq only supported with, --sopsc_idr or --sop_multi"
 			assert args.idp_seq.endswith((".fa",".fasta"))
 			pdbdata[0].buildProtIDR(fasta=args.idp_seq,rad=rad,CBgly=CB_gly)
 		else: 
 			if args.baul2019 or args.baidya2022: assert args.idp_seq, "Provide --aa_pdb, --cg_pdb or --idp_seq"
 			assert args.aa_pdb or args.cg_pdb, ("Error. Provide all-atom or coarse-grain pdb. --aa_pdb/--cg_pdb")
 
-	if args.control or args.gen_cg:	#Use Protein with DNA/RNA bound at natve site
+	if args.control:	#Use Protein with DNA/RNA bound at natve site
 		opt.control_run=True
 		assert not args.custom_nuc, "Error: --custom_nuc cannot be used with --control"
 		opt.custom_nuc=False
@@ -1185,7 +1186,7 @@ def main():
 		elif args.baul2019 or args.baidya2022:
 			top=Baidya2022(allatomdata=pdbdata,fconst=fconst,CGlevel=CGlevel,Nmol=Nmol,cmap=(prot_contmap,nucl_contmap,inter_contmap),opt=opt)
 			topdata=top.write_topfile(outtop=topfile,excl=excl_rule,rad=rad,charge=charge,bond_function=bond_function,CBchiral=CB_chiral)
-		elif args.baratam2024 or args.sop_idr:
+		elif args.baratam2024 or args.sopsc_idr:
 			assert args.aa_pdb or args.cg_pdb, "Error, SOP-MULTI needs input structure"
 			assert args.idp_seq, "Error, SOP-MULTI needs sequence and residue range for IDR"
 			idrdata=PDB_IO()
@@ -1196,9 +1197,28 @@ def main():
 			else:
 				top=SOPSC_IDR(allatomdata=pdbdata,fconst=fconst,CGlevel=CGlevel,Nmol=Nmol,cmap=(prot_contmap,nucl_contmap,inter_contmap),opt=opt,idrdata=idrdata)
 			topdata=top.write_topfile(outtop=topfile,excl=excl_rule,rad=rad,charge=charge,bond_function=bond_function,CBchiral=CB_chiral)
-			unfolded=PDB_IO()
-			unfolded.buildProtIDR(fasta="unfolded.fa",rad=rad,CBgly=CB_gly,topbonds=top.bonds[0])
-			unfolded.write_CG_protfile(CGlevel=CGlevel,CAcom=CA_com,CBcom=CB_com,CBfar=CB_far,CBgly=CB_gly,nucl_pos=nucl_pos,outgro=grofile)
+			try: 
+				import modeller
+				modeller_found=True
+			except: modeller_found=False
+			if modeller_found and args.aa_pdb: 
+				user_option=input(">>> MODELLER found. Do you want to use it for generating starting structure file? [y/N (default: N)]").upper()
+				assert user_option in "YN", "Error input can be either Y or N"
+				if user_option == "Y":
+					modeller=PDB_IO()
+					assert len(pdbdata)==1
+					orddata=pdbdata[0].prot
+					modeller.loopModelProt(ordered=orddata,idrdata=idrdata,CBgly=CB_gly)
+					modeller.write_CG_protfile(CGlevel=CGlevel,CAcom=CA_com,CBcom=CB_com,CBfar=CB_far,CBgly=CB_gly,nucl_pos=nucl_pos,outgro=grofile)
+			else:
+				user_option = "N"
+				print ("NOTE: SuBMIT Can generate a starting structure using MODELLER if it is locally installed on your system and given an all-atom template.")
+				if not args.aa_pdb: print ("All-atom template not found. Will generate an unfolded chain.")
+				if not modeller_found: print ("MODELLER not found. Will generate an unfolded chain.")
+			if user_option != "Y":
+				unfolded=PDB_IO()
+				unfolded.buildProtIDR(fasta="unfolded.fa",rad=rad,CBgly=CB_gly,topbonds=top.bonds[0])
+				unfolded.write_CG_protfile(CGlevel=CGlevel,CAcom=CA_com,CBcom=CB_com,CBfar=CB_far,CBgly=CB_gly,nucl_pos=nucl_pos,outgro=grofile)
 		elif args.banerjee2023:
 			top=Banerjee2023(allatomdata=pdbdata,fconst=fconst,CGlevel=CGlevel,Nmol=Nmol,cmap=(prot_contmap,nucl_contmap,inter_contmap),opt=opt)
 			topdata=top.write_topfile(outtop=topfile,excl=excl_rule,rad=rad,charge=charge,bond_function=bond_function,CBchiral=CB_chiral)
@@ -1222,7 +1242,9 @@ def main():
 			for i in range(len(molecule_order)):
 				fout.write(" %7d %7s %7d\n"%(i,molecule_order[i][0].split("_")[0].rjust(7),molecule_order[i][1]))
 
-	if box_width==0: fill_status=False
+	if box_width==0 or opt.control_run:
+		if box_width==0: fill_status=False
+		else: fill_status=True
 	else:
 		fill=Fill_Box(outgro=grofile,radii=rad,box_width=box_width,voxel_width=voxel_width,order=molecule_order)
 		fill_status=fill.status

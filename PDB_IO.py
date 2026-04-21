@@ -318,7 +318,6 @@ class PDB_IO:
                 line=fin.readline()
                 atnum=a+1
                 atname=line[10:15].strip()
-                #if atname.startswith("H") and not self.CBgly: continue
                 resname,resnum =  line[5:10].strip(),int(line[0:5])
                 if atname.startswith("H") and not self.CBgly and resname=="GLY": continue
                 XYZ=10*np.float64([line[20:28],line[28:36],line[36:44]])
@@ -389,7 +388,6 @@ class PDB_IO:
             for line in fin:
                 if line.startswith(("ATOM","HETATM")):
                     atname=line[12:16].strip()
-                    #if atname.startswith("H") and not self.CBgly: continue
                     resname,resnum =  line[17:20].strip(),hy36decode(4,line[22:26])
                     if atname.startswith("H") and not self.CBgly and resname=="GLY": continue
                     if prev_resnum not in (resnum,resnum-1) and len(prev_resname)!=0:
@@ -866,6 +864,89 @@ class PDB_IO:
         self.__readPDB__()
         return outpdb
     
+    def loopModelProt(self,ordered,idrdata,CBgly=False):
+        # chain chain indices to chain IDs
+        residues=dict()
+        for x in ordered.res:
+            new_x=tuple([ordered.cid[x[0]]]+list(x)[1:])
+            residues[new_x]=1
+        for x in idrdata.res:
+            new_x=tuple([idrdata.cid[x[0]]]+list(x)[1:])
+            residues[new_x]=0
+        ordered_section = {x:residues[x] for x in residues if "CA" in x}
+        residues = list(ordered_section.keys()); residues.sort()
+        prev_idx,idx=0,0
+        temp=ordered_section.copy()
+        for x in residues: 
+            #assign ordered section index
+            if ordered_section[x]!=0: # not in IDR
+                if prev_idx==0: idx+=1 #increment index after every disordered region 
+                ordered_section[x]=idx #use the same index for continous ordered section
+            prev_idx=ordered_section[x] #load previous residue index 
+        
+        #writing alignment file
+        with open("modelled.pir","w+") as fout:
+            for x in range(len(residues)):
+                initial_rnum=residues[x][1]
+                if ordered_section[residues[x]]!=0: break
+            ch_count,prev_chain,prev_rnum=0,str(),0
+            for x in range(len(residues)):
+                chain,rnum,rname,atname = residues[x]
+                assert atname=="CA"
+                if x==0 or chain!=prev_chain or rnum-prev_rnum not in (0,1):
+                    if ch_count==0:
+                        fout.write(">P1;%s\n"%(ordered.pdbfile))
+                        fout.write("structureX:%s:%s:%s::::::\n"%(ordered.pdbfile,initial_rnum,chain))
+                    else: fout.write("/\n")
+                    ch_count+=1
+                if ordered_section[residues[x]]!=0:
+                    fout.write(idrdata.amino_acid_dict[rname])
+                else: fout.write("-")
+                prev_chain = chain
+                prev_rnum=rnum
+            if ch_count!=0: 
+                ch_count=0
+                fout.write("*\n\n")
+            for x in range(len(residues)):
+                chain,rnum,rname,atname = residues[x]
+                assert atname=="CA"
+                if x==0 or chain!=prev_chain or rnum-prev_rnum not in (0,1):
+                    if ch_count==0:
+                        fout.write(">P1;modelled\n")
+                        fout.write("sequence:modelled:%s:%s::::::\n"%(rnum,chain))
+                    else: fout.write("/\n")
+                    ch_count+=1
+                fout.write(idrdata.amino_acid_dict[rname])
+                prev_chain = chain
+                prev_rnum=rnum
+            if ch_count!=0: 
+                ch_count=0
+                fout.write("*\n\n")
+
+        #running MODELLER 
+        import modeller as mod
+        from modeller.automodel import automodel,AllHModel
+        mod.log.verbose() #verbose output
+        env = mod.environ() #setup environment
+        env.io.atom_files_directory = ['.']
+        
+        if CBgly: am = AllHModel(env, alnfile='modelled.pir', knowns=ordered.pdbfile, sequence='modelled')
+        else: am = automodel(env, alnfile='modelled.pir', knowns=ordered.pdbfile, sequence='modelled')
+        am.starting_model,am.ending_model = 1,3
+        am.make()                            #homology model 
+
+        best_molpdf,best_model=0.0,str()
+        with open("modelled.molpdd","w+") as fout: 
+            fout.write("#Model\tmolpdf\n")
+            for output in am.outputs:
+                if output['failure'] is None:
+                    fout.write("%s\t%e\n"%(output["name"],output["molpdf"]))
+                    if best_molpdf==0 or best_molpdf>output["molpdf"]:
+                        best_molpdf=output["molpdf"]
+                        best_model=output["name"]
+        best_model=self.loadfile(infile=best_model,CBgly=CBgly)
+        return best_model
+
 class Fill_Box:
     def __init__(self,radii,box_width,voxel_width,outgro,order) -> None:
         self.max_excl=2*max(radii.values())

@@ -69,6 +69,9 @@
   --pal2019, -pal2019, --levy2019, -levy2019
                         Pal & Levy 2019 Protein CB-CA & RNA/DNA P-S-B model.
                         10.1371/journal.pcbi.1006768
+  --hyeon2006, -hyeon2006, --sop2006, -sop2006
+                        Hyeon, Dutta & Thirumalai 2006 SOP CA-only.
+                        10.1016/j.str.2006.09.002
   --reddy2016, -reddy2016, --maity2016, -maity2016, --sopsc2016, -sopsc2016
                         Maity & Reddy  2016 SOP-SC CA-CB.
                         10.1021/jacs.5b11300
@@ -87,7 +90,7 @@
   --baratam2024, -baratam2024, --sop_multi, -sop_multi
                         Baratam & Srivastava 2024 SOP-MULTI CA-CB.
                         10.1021/acs.jctc.4c00579
-  --sop_idr, -sop_idr   Reddy-Thirumalai(SOPSC) + Baidya-Reddy(SOPIDP) hybrid
+  --sopsc_idr, -sopsc_idr   Maity-Reddy(SOPSC) + Baidya-Reddy(SOPIDP) hybrid
                         CA-CB
   --banerjee2023, -banerjee2023, --selfpeptide, -selfpeptide [WIP]
                         Banerjee & Gosavi 2023 Self-Peptide model.
@@ -383,5 +386,5 @@
 * GROMACS 4.6.x: https://ftp.gromacs.org/pub/gromacs/gromacs-4.6.7.tar.gz
 * GROMACS 4.5.4 SBM1 (Gaussian contact potentials): https://smog-server.org/extension/#gauss
 * GROMACS 5.1.4: https://ftp.gromacs.org/pub/gromacs/gromacs-5.1.4.tar.gz
-* OpenSMOG v1.1.1: https://github.com/smog-server/OpenSMOG
+* OpenSMOG v1.x: https://github.com/smog-server/OpenSMOG
 * OpenSMOGmod (Contact potential for >2 particles): https://github.com/sglabncbs/OpenSMOGmod

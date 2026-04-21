@@ -1890,7 +1890,6 @@ class Topology:
         #Input units KJ mol-1 A-2 GROMACS units KJ mol-1 nm-1 (100 times the input value) 
         Kb = float(self.fconst.Kb_prot)*100.0
 
-        #GROMACS 4.5.4 : FENE=7 AND HARMONIC=1
         assert func==1
         fout.write("\n%s\n"%("[ bonds ]"))
         fout.write(";%5s %5s %5s %5s %5s\n"%("ai", "aj", "func", "r0(nm)", "Kb"))
@@ -2656,10 +2655,11 @@ class Reddy2016(Topology):
         K = float(self.fconst.Kb_prot)*100.0
 
 
-        #GROMACS 4.5.4 : FENE=7 AND HARMONIC=1
-        assert func == 8
+        #FENE 8 and Harmonic 1
+        assert func in (1,8)
         R = 0.2
 
+        # for function 8
         # V = -(K/2)*R^2*ln(1-((r-r0)/R)^2)
         # V_1 = dV/dr = -K*0.5*R^2*(1/(1-((r-r0)/R)^2))*(-2*(r-r0)/R^2)
         #             = -K*0.5*(-2)(r-r0)/(1-((r-r0)/R)^2)
@@ -2667,7 +2667,16 @@ class Reddy2016(Topology):
 
         fout.write("\n%s\n"%("[ bonds ]"))
         data.Bonds()
-        table_idx = dict()
+        
+        if func==1:
+            fout.write(";%5s %5s %5s %5s %5s;\n"%("ai", "aj", "func", "r0", "Kb"))
+            for pairs,dist in data.bonds:
+                I,J = 1+np.transpose(pairs) 
+                for i in range(pairs.shape[0]): 
+                    fout.write(" %5d %5d %5d %e %e; SOP harmonic\n"%(I[i],J[i],1,dist[i],K))
+            return
+        #else:
+
         if self.opt.opensmog:
             fout.write(";%5s %5s %5s %5s %5s; for excl\n"%("ai", "aj", "func", "r0", "Kb=0.0"))
             temp_p,temp_d=[],[]
@@ -2683,7 +2692,9 @@ class Reddy2016(Topology):
                 r0 = np.round(dist[i],3)
                 fout.write(" %5d %5d %5d %.3f 0.0; dummy_entry; bond_in_xml\n"%(I[i],J[i],1,r0))
             return
+
         #else:
+        table_idx = dict()
         fout.write(";%5s %5s %5s %5s %5s\n"%("ai", "aj", "func", "table_no.", "Kb"))
         for c in range(len(data.bonds)):
             pairs,dist=data.bonds[c]
@@ -2717,9 +2728,7 @@ class Reddy2016(Topology):
         print (">> Writing SOP-SC pairs section")
         cmap = self.cmap["prot"]
         data.Pairs(cmap=cmap,group="prot")
-        
         assert cmap.custom_pairs and cmap.type in (-1,0,2) and cmap.func==1
-
         scscmat,sigmat=data.Interactions(pairs=cmap.custom_pairs)
         assert len(sigmat)==0
 
@@ -2924,10 +2933,11 @@ class Hyeon2006(Reddy2016):
         #Input units KJ mol-1 A-2 GROMACS units KJ mol-1 nm-1 (100 times the input value) 
         K = float(self.fconst.Kb_nucl)*100.0
 
-        #GROMACS 4.5.4 : FENE=7 AND HARMONIC=1
-        assert func == 8
+        #FENE 8 and Harmonic 1
+        assert func in (1,8)
         R = 0.2
 
+        # for function 8
         # V = -(K/2)*R^2*ln(1-((r-r0)/R)^2)
         # V_1 = dV/dr = -K*0.5*R^2*(1/(1-((r-r0)/R)^2))*(-2*(r-r0)/R^2)
         #             = -K*0.5*(-2)(r-r0)/(1-((r-r0)/R)^2)
@@ -2935,7 +2945,15 @@ class Hyeon2006(Reddy2016):
 
         fout.write("\n%s\n"%("[ bonds ]"))
         data.Bonds()
-        table_idx = dict()
+
+        if func==1:
+            fout.write(";%5s %5s %5s %5s %5s;\n"%("ai", "aj", "func", "r0", "Kb"))
+            for pairs,dist in data.bonds:
+                I,J = 1+np.transpose(pairs) 
+                for i in range(pairs.shape[0]): 
+                    fout.write(" %5d %5d %5d %e %e; SOP harmonic\n"%(I[i],J[i],1,dist[i],K))
+            return
+
         if self.opt.opensmog:
             fout.write(";%5s %5s %5s %5s %5s; for excl\n"%("ai", "aj", "func", "r0", "Kb=0.0"))
             temp_p,temp_d=[],[]
@@ -2952,6 +2970,7 @@ class Hyeon2006(Reddy2016):
                 fout.write(" %5d %5d %5d %.3f 0.0; dummy_entry; bond_in_xml\n"%(I[i],J[i],1,r0))
             return
 
+        table_idx = dict()
         fout.write(";%5s %5s %5s %5s %5s\n"%("ai", "aj", "func", "table_no.", "Kb"))
         for c in range(len(data.bonds)):
             pairs,dist=data.bonds[c]
@@ -3209,40 +3228,51 @@ class SOPSC_IDR(Reddy2016):
     def __write_unfolded_cgpdb__(self,rad,data):
         print ("> Writing unfolded CG-PDB file")
         self.ordered=data.allatpdb.prot
+
         residues = dict()
-        for x in self.ordered.res: residues[x]=1
-        for x in self.idrdata.res: residues[x]=0
+        for x in self.ordered.res: 
+            new_x=tuple([self.ordered.cid[x[0]]]+list(x)[1:])
+            residues[new_x]=[1,x[0]]
+        for x in self.idrdata.res:
+            new_x=tuple([self.idrdata.cid[x[0]]]+list(x)[1:])
+            residues[new_x]=[0,x[0]]
+
         ordered_section = {x:residues[x] for x in residues if "CA" in x}
         residues = list(ordered_section.keys()); residues.sort()
         prev_idx,idx=0,0
         for x in residues: 
             #assign ordered section index
-            if prev_idx==0 and ordered_section[x]!=0: idx+=1 #increment index after every disordered region 
-            if ordered_section[x]!=0: ordered_section[x]=idx #use the same index for continous ordered section
-            prev_idx=ordered_section[x] #load previous residue index 
+            if ordered_section[x][0]!=0: # not in IDR
+                if prev_idx==0: idx+=1 #increment index after every disordered region 
+                ordered_section[x][0]=idx #use the same index for continous ordered section
+            prev_idx=ordered_section[x][0] #load previous residue index 
         #for x in residues: print (x,ordered_section[x])
 
+        """
         if len(self.ordered.cid)>len(self.idrdata.cid):
             CID=self.ordered.cid
             assert tuple(CID[:len(self.idrdata.cid)])==tuple(self.idrdata.cid)
         else:
             CID=self.idrdata.cid
             assert tuple(CID[:len(self.ordered.cid)])==tuple(self.ordered.cid)
+        """
 
-        chain,prev_rnum=0,0
+        ch_count,prev_chain,prev_rnum=0,str(),0
         outfasta="unfolded.fa"
         self.new2old_res,ch_count=dict(),-1
         with open(outfasta,"w+") as fout:
             for x in range(len(residues)):
-                cnum,rnum,rname,atname = residues[x]
+                chain,rnum,rname,atname = residues[x]
                 assert atname=="CA"
-                if x==0 or CID[cnum]!=CID[chain] or rnum-prev_rnum not in (0,1):
-                    fout.write("\n\n>chain:%s:%s\n"%(CID[cnum],rnum))
+                if x==0 or chain!=prev_chain or rnum-prev_rnum not in (0,1):
+                    fout.write("\n\n>chain:%s:%s\n"%(chain,rnum))
                     ch_count+=1
                 fout.write(self.idrdata.amino_acid_dict[rname])
-                chain = cnum
-                self.new2old_res[(ch_count,rnum)]=cnum,rnum
+                prev_chain = chain
+                self.new2old_res[(ch_count,rnum)]=ordered_section[residues[x]][1],rnum
+                ordered_section[residues[x]]=ordered_section[residues[x]][0]
                 prev_rnum=rnum
+
         #get unfolded CG-pdb
         unfolded = PDB_IO()
         unfolded.buildProtIDR(fasta=outfasta,rad=rad,CBgly=self.opt.CB_gly)
@@ -3378,7 +3408,6 @@ class SOPSC_IDR(Reddy2016):
                     atype=atname
                     if resnum !=prev_resnum: prev_resnum,rescount=resnum,1+rescount
                     if atype=="CB": atype+=seq[seqcount][rescount]
-                    if resname=="GLY" and atype=="CA": atype="CBG"
                     if atype not in Q: Q[atype] = 0
                     if atinfo in self.idrdata.res:
                         Q[atype+"i"]=Q[atype]
@@ -3430,11 +3459,11 @@ class SOPSC_IDR(Reddy2016):
         #Input units KJ mol-1 A-2 GROMACS units KJ mol-1 nm-1 (100 times the input value) 
         K = float(self.fconst.Kb_prot)*100.0
 
-        #GROMACS 4.5.4 : FENE=7 AND HARMONIC=1
-        
-        assert func == 8
+        #FENE 8 and Harmonic 1
+        assert func in (1,8)
         R = 0.2
-
+        
+        # for function 8
         # V = - (K/2)*R^2*ln(1-((r-r0)/R)^2)
         # V_1 = dV/dr = -K*0.5*R^2*(1/(1-((r-r0)/R)^2))*(-2*(r-r0)/R^2)
         #             = -K*0.5*(-2)(r-r0)/(1-((r-r0)/R)^2)
@@ -3447,6 +3476,15 @@ class SOPSC_IDR(Reddy2016):
         data.bonds=adjusted_data.bonds
         self.bonds.append(adjusted_data.bonds)
         table_idx = dict()
+
+        if func==1:
+            fout.write(";%5s %5s %5s %5s %5s;\n"%("ai", "aj", "func", "r0", "Kb"))
+            for pairs,dist in adjusted_data.bonds:
+                I,J = 1+np.transpose(pairs) 
+                for i in range(pairs.shape[0]): 
+                    fout.write(" %5d %5d %5d %e %e; SOP harmonic\n"%(I[i],J[i],1,dist[i],K))
+            return
+
         if self.opt.opensmog:
             fout.write(";%5s %5s %5s %5s %5s; for excl\n"%("ai", "aj", "func", "r0", "Kb=0.0"))
             for c in range(len(adjusted_data.bonds)):
