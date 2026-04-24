@@ -6,7 +6,7 @@
 
 	A toolkit for generating input files for performing Molecular Dynamics
 	Simulations (MD) of Coarse-Grain Structure Based Models (CG-SBM) on 
-	GROMACS (4.5.4/4.6.7/5.1.4) and/or OpenSMOG (v1.1.1)
+	GROMACS (4.5.4/4.6.7/5.1.4) and/or OpenSMOG (v1.1.1+)
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,7 +27,9 @@
     A copy of the GNU General Public License is included along with
 	this program.
 
-usage: python submit.py --help
+Installation: pip install . # in the repo directory
+Usage: python submit.py --help # without pip install 
+       submit-cli --help       # after pip install 
 
 Citation:-
 	Publication:
@@ -39,8 +41,8 @@ import argparse
 import numpy as np
 from typing import NamedTuple, Dict
 from pathlib import Path
-from PDB_IO import PDB_IO,Nucl_Data,Prot_Data,Fill_Box
-from topology import *
+from SuBMIT.PDB_IO import PDB_IO,Nucl_Data,Prot_Data,Fill_Box
+from SuBMIT.topology import *
 
 class Options(Dict):
 	opensmog=False
@@ -296,7 +298,7 @@ def main():
 	parser.add_argument("--voxel","-voxel","--box_cell","-box_cell", help='Width of the minimal cubic volume unit, used to fill the simulation box. Default: 1.618 Å')
 	parser.add_argument("--outxml","-outxml", help='Name for output .xml (openSMOG) file.(tool adds prefix nucl_  and prot_ for independednt files). Default: opensmog.xml (and opensmog.top)')
 	parser.add_argument("--opensmog", "-opensmog",action='store_true', help="Generate files ,xml and .top files for openSMOG. Default: False")
-	parser.add_argument("--dihed2xml", "-dihed2xml",action='store_true', help="Write torsions to opensmog xml. Adds conditon for angle->n*pi. Only supported woth OpensMOGmod plugin :https://github.com/sglabncbs/OpenSMOGmod. Default: False")
+	parser.add_argument("--dihed2xml", "-dihed2xml",action='store_true', help="Write torsions to opensmog xml. Adds conditon for angle->n*pi. Only supported with OpensMOGmod plugin :https://github.com/sglabncbs/OpenSMOGmod. Default: False")
 
 	#level of coarse-graining
 	parser.add_argument("--prot_cg", "-prot_cg", type=int, help="Level of Amino-acid coarse-graining 1 for CA-only, 2 for CA+CB. Dafault: 2 (CA+CB)")

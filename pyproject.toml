@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "SuBMIT"
+version = "1.0.0"
+authors = [
+  { name="Digvijay L. Prakash, Arkadeep Banerjee, Shachi Gosavi", email="digvijay.l.prakash@outlook.com" },
+]
+
+description = "Structure Based Model(s) Input Toolkit"
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Bio-Molecular Dynamics",
+]
+
+dependencies = ["numpy==2.2.6","argparse==1.4.0","tqdm>=4.63.0"]
+
+[project.urls]
+"Homepage" = "https://github.com/sglabncbs/SuBMIT"
+"Bug Tracker" = "https://github.com/sglabncbs/SuBMIT/issues"
+
+[tool.setuptools]
+packages = ["SuBMIT", "SuBMIT.hy36cctbx"]
+
+[tool.setuptools.package-data]
+"SuBMIT" = ["**/*.dat", "**/*.txt", "models/*/*.dat"]
+
+[project.scripts]
+submit-cli = "SuBMIT.submit:main"
+

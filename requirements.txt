@@ -1,4 +1,0 @@
-numpy==2.2.6
-argparse==1.4.0
-tqdm==4.63.0
-

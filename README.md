@@ -3,49 +3,66 @@
  
  ![alt text](https://github.com/sglabncbs/submit/blob/main/examples/SuBMIT.png)
  
+## *Installation*
+SuBMIT can be directly used without installation as a python script (python submit.py). Alternatively, it can also be installed as a command-line tool (submit-cli) using pip.
+
+```bash
+git clone https://github.com/sglabncbs/SuBMIT.git
+cd SuBMIT/
+pip install .
+```
+
 ## *Examples*. 
 ### Model presets allows user to auto-select parameters based on predefined models. </br>
 ### 1. CA-SBM (Clementi et al., 2000. https://doi.org/10.1006/jmbi.2000.3693) 
+##### using without installation
+ ```bash
+  python submit.py --clementi2000 --aa_pdb [All-atom .pdb file]   
  ```
- $ python submit.py --clementi2000 --aa_pdb [All-atom .pdb file]   
+##### using after pip install
+ ```bash
+  submit-cli --clementi2000 --aa_pdb [All-atom .pdb file]   
  ```
+
 ### 2. CA-CB SOP-SC model (Maity and Reddy, 2016. https://pubs.acs.org/doi/abs/10.1021/jacs.5b11300) 
- ```
- $ python submit.py --reddy2016 --aa_pdb [All-atom .pdb file] 
+ ```bash
+  python submit.py --reddy2016 --aa_pdb [All-atom .pdb file] 
  ```
 ##### OR
- ```
- $ python submit.py --reddy2016 --cg_pdb [Coarse-grained .pdb file] 
+ ```bash
+  python submit.py --reddy2016 --cg_pdb [Coarse-grained .pdb file] 
  ```
 ### 3. CA-CB SOP-SC-IDP model (Baidya and Reddy, 2022. https://doi.org/10.1021/acs.jpclett.2c01972) 
- ```
- $ python submit.py --aa_pdb/--cg__pdb [template AA/CG .pdb file]  
+ ```bash
+  python submit.py --aa_pdb/--cg__pdb [template AA/CG .pdb file]  
  ```
 ##### OR
- ```
- $ python submit.py --baidya2022 --idp_seq [IDP sequence .fa file] 
+ ```bash
+  python submit.py --baidya2022 --idp_seq [IDP sequence .fa file] 
  ```
 ### 4. CA-CB SOP-SC-MULTI model (Baratam and Srivastava, 2024.https://doi.org/10.1021/acs.jctc.4c00579) 
- ```
- $ python submit.py --baratam2024 --idp_seq [IDP sequence .fa file (see models/baratam2024/example.fa)] 
+ ```bash
+  python submit.py --baratam2024 --idp_seq [IDP sequence .fa file (see models/baratam2024/example.fa)] 
  ```
 ### 5. CA-CB Protein+RNA/DNA model with DH-electrostatics (Pal and Levy, 2019. https://doi.org/10.1371/journal.pcbi.1006768) 
- ```
- $ python submit.py --pal2019 --aa_pdb [protein All-atom .pdb file] --custom_nuc [RNA/DNA all-atom .pdb file] 
+ ```bash
+  python submit.py --pal2019 --aa_pdb [protein All-atom .pdb file] --custom_nuc [RNA/DNA all-atom .pdb file] 
  ```
 ###### OR
- ```
- $ python submit.py --pal2019 --aa_pdn [protein AA .pdb] [RNA/DNA AA .pdb] 
+ ```bash
+  python submit.py --pal2019 --aa_pdn [protein AA .pdb] [RNA/DNA AA .pdb] 
  ```
 
 ### 6. For every model, predefined parameters can be customized. For example, for changing angle force constant in Pal 2019 model  
- ```
- $ python submit.py --pal2019 --aa_pdb [protein All-atom .pdb file] --Ka_prot 80 
+ ```bash
+  python submit.py --pal2019 --aa_pdb [protein All-atom .pdb file] --Ka_prot 80 
  ```
 
 ### For testing your own model or tweaking predefined ones, refer to optional arguments (--help )
- ```
- $ python submit.py --help  
+ ```bash
+  python submit.py --help 
+  #or 
+  submit-cli --help 
  ```
 
 ## *Optional arguments*
@@ -53,7 +70,7 @@
  
 ### Preset models:-
 #### NOTE 1: Based on the information available to us, we have implemented the models listed below in accordance with their respective publications. If any contributors to the development of these models identify any bugs, errors, or incorrect parameters, we kindly request that they raise an issue on the GitHub page.  </br>
-#### NOTE 3: Models with [TEST] tag, are not from any previous publication and haven't been tested. </br>
+#### NOTE 2: Models with [TEST] tag, are not from any previous publication and haven't been tested. </br>
 #### NOTE 3: Models with [WIP] tag, are still being tested and will be available in next version.  </br>
 
 <pre>
@@ -119,6 +136,8 @@
 <pre>
   --gen_cg, -gen_cg     Only Generate CG structure without generating topology
                         .top/.xml files
+  --outdir OUTDIR, -outdir OUTDIR
+                        Output Directory. Default: SuBMIT_Output
   --outtop OUTTOP, -outtop OUTTOP
                         Gromacs topology file output name (tool adds prefix
                         nucl_ and prot_ for independednt files). Default:
