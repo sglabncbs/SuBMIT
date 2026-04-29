@@ -552,10 +552,32 @@ class Preprocess:
             
             print ("> Determining contacts for %d*%d atom pairs using %.2f A cutoff and %.2f scaling-factor"%(aa_data_xyz0.shape[0],aa_data_xyz.shape[0],cmap.cutoff,cmap.scale))
             for i in trange(aa_data_xyz0.shape[0]):
-                #resgap = 4:CA-CA, 3:CA-CB, 3:CB-CB, 
-                gap=resgap-np.intp(bb_sc+bb_sc0[i]>0) #aa2cg bbsc CA:0,CB:1
-                #resgap 1: P/B/S-P/S/B
-                gap=gap+(1-gap)*int(bb_sc0[i]>=2) #aa2cg bbsc P:5,B:3,S:2
+                #aa2cg bbsc CA:0,CB:1 & resgap is 4
+                #gap = 4: CA-CA , 3: CA-CB , 3: CB-CA , 2: CB-CB
+                #gap = 4-(0+0)=4, 4-(0+1)=3, 4-(1+0)=3, 4-(1+1)=2
+                #gap=resgap-(bb_sc+bb_sc0[i]) 
+                #aa2cg bbsc P:5,B:3,S:2
+                #resgap 2: P-P, S-P, B-P, S-S
+                #repgap 1: P-S,    , B-S
+                #resgap 1: P-B, S-B, B-B 
+                #gap=( 4*np.intp(bb_sc==0)*np.intp(bb_sc0[i]==0)+\
+                #        3*np.intp(bb_sc==0)*np.intp(bb_sc0[i]==1)+\
+                #        3*np.intp(bb_sc==1)*np.intp(bb_sc0[i]==0)+\
+                #        2*np.intp(bb_sc==1)*np.intp(bb_sc0[i]==1)+\
+                #        2*np.intp(bb_sc==5)+\
+                #        1*np.intp(bb_sc==3)+\
+                #        2*np.intp(bb_sc==2)*np.intp(bb_sc0[i]==2)+\
+                #        1*np.intp(bb_sc==2)*np.intp(bb_sc0[i] in (3,5))
+                #    )
+                gap=(
+                        np.intp(bb_sc<2)*(resgap-(bb_sc+bb_sc0[i]))+\
+                        np.intp(bb_sc>=2)*(
+                            2*np.intp(bb_sc==5)+\
+                            1*np.intp(bb_sc==3)+\
+                            2*np.intp(bb_sc==2)*np.intp(bb_sc0[i]==2)+\
+                            1*np.intp(bb_sc==2)*np.intp(bb_sc0[i] in (3,5))
+                            )
+                    )
 
                 if group in ("prot","nucl"): #calculate for intra molecule
                     calculate = np.intp(mol_id==mol_id0[i])*\
@@ -684,7 +706,7 @@ class MergeTop:
         self.already_excluded_atoms={'exclusions':[]}
         self.atoms_section=str()
         if self.opt.opensmog:
-            self.xmlfile=OpenSMOGXML(xmlfile=self.opt.xmlfile,coulomb=coul,nbshift=self.opt.nbshift)
+            self.xmlfile=OpenSMOGXML(xmlfile=self.opt.xmlfile,coulomb=coul,nbshift=self.opt.nbshift,dihed2xml=self.opt.dihed2xml)
         self.__merge__(Nprot=Nprot,Nnucl=Nnucl,opt=opt,excl_volume=excl_volume)
         
     def nPlaces(self,n,count2str):
@@ -700,23 +722,27 @@ class MergeTop:
 
     def __smogxmlParse(self,xmlfile_tag):
         xmlfile="%s_%s"%(xmlfile_tag,self.opt.xmlfile)
+        xml_files=[xmlfile]
+        if self.opt.dihed2xml:
+            xml_files.append(xmlfile.replace(".xml",".mod.xml"))
         data=dict()
-        for line in open(xmlfile):
-            indent=len(line)-len(line.lstrip())
-            if indent==0: continue
-            elif indent==1: 
-                if "/" in line: continue
-                tag=line
-                if tag not in data: data[tag]={}
-            elif indent==2: 
-                if "/" in line: continue
-                subtag=line
-                if subtag not in data[tag]:
-                    data[tag][subtag]={"expr":str(),"params":list(),"data":list()}
-            elif indent==3:
-                if "expr" in line: data[tag][subtag]["expr"]=line
-                elif "parameter" in line: data[tag][subtag]["params"].append(line)
-                else: data[tag][subtag]["data"].append(line)
+        for xmlfile in xml_files:
+            for line in open(xmlfile):
+                indent=len(line)-len(line.lstrip())
+                if indent==0: continue
+                elif indent==1: 
+                    if "/" in line: continue
+                    tag=line
+                    if tag not in data: data[tag]={}
+                elif indent==2: 
+                    if "/" in line: continue
+                    subtag=line
+                    if subtag not in data[tag]:
+                        data[tag][subtag]={"expr":str(),"params":list(),"data":list()}
+                elif indent==3:
+                    if "expr" in line: data[tag][subtag]["expr"]=line
+                    elif "parameter" in line: data[tag][subtag]["params"].append(line)
+                    else: data[tag][subtag]["data"].append(line)
         return data
 
     def __getSurfaceAtoms(self,contacts,tag):
@@ -1322,22 +1348,22 @@ class MergeTop:
                             if mp_tag not in parsed_xml[i]: continue
                             mp_subtags=[subtag for subtag in parsed_xml[i][mp_tag] \
                                             if "contacts" not in subtag.split("=")[-1].lower()]
-                            if self.xmlfile.pairs_count>0: 
-                                self.xmlfile.fxml.write(' </contacts>\n')
-                                self.xmlfile.pairs_count=0
-                            if self.xmlfile.manypart_count==0: self.xmlfile.fxml.write(' <manyparticle>\n')
+                            #if self.xmlfile.pairs_count>0: 
+                                #self.xmlfile.fxml.write(' </contacts>\n')
+                                #self.xmlfile.pairs_count=0
+                            if self.xmlfile.manypart_count==0: self.xmlfile.fmod.write(' <manyparticle>\n')
                             for subtag in mp_subtags:
                                 print ("> Writing %s dihedrals to %s manyparticle section."%(subtag.split('"')[1],opt.xmlfile))
                                 new_subtag=subtag.split('"');new_subtag[1]="%s_%s"%(tag_list[i],new_subtag[1])
                                 new_subtag='"'.join(new_subtag)
                                 expr=parsed_xml[i][mp_tag][subtag]["expr"]
-                                self.xmlfile.fxml.write(new_subtag+expr)
-                                for param in parsed_xml[i][mp_tag][subtag]["params"]: self.xmlfile.fxml.write(param)
+                                self.xmlfile.fmod.write(new_subtag+expr)
+                                for param in parsed_xml[i][mp_tag][subtag]["params"]: self.xmlfile.fmod.write(param)
                                 xml_data=parsed_xml[i][mp_tag][subtag]["data"]
-                                self.__writeInteractionsXML(fsec=self.xmlfile.fxml,nparticles=Nparticles[header],inp=xml_data,tag=tag_list[i],\
+                                self.__writeInteractionsXML(fsec=self.xmlfile.fmod,nparticles=Nparticles[header],inp=xml_data,tag=tag_list[i],\
                                                                 nmol=nmol_list[i],prev_at_count=sum(prev_natoms[:i+1]),atoms_in_mol=self.atoms_in_mol[i])
                                 self.xmlfile.manypart_count+=1
-                                self.xmlfile.fxml.write("%s  </%s>\n"%tuple(subtag.split()[0].split("<")))
+                                self.xmlfile.fmod.write("%s  </%s>\n"%tuple(subtag.split()[0].split("<")))
 
                 elif header in ["pairs","exclusions"]:
                     for i in range(Ninp):
@@ -1393,10 +1419,15 @@ class MergeTop:
                     status=[fout.write(i+"\n") for i in data_list[0] if i.strip() != ""]
                     
 class OpenSMOGXML:
-    def __init__(self,xmlfile,coulomb,nbshift=False) -> None:
+    def __init__(self,xmlfile,coulomb,nbshift=False,dihed2xml=False) -> None:
         self.fxml=open(xmlfile,"w+")
         self.fxml.write('<OpenSMOGforces>\n')
         self.nbshift=nbshift
+        self.fmod=None
+        if dihed2xml:
+            modfile = xmlfile.replace(".xml",".mod.xml")
+            self.fmod=open(modfile,"w+")
+            self.fmod.write('<OpenSMOGmod>\n')
         self.nb_count,self.pairs_count,self.manypart_count=0,0,0
         self.add_electrostatics=False
         self.coulomb=coulomb
@@ -1534,23 +1565,23 @@ class OpenSMOGXML:
 
     def write_manyparticle_entries(self,groups,params,name,expression):
         #writing many particle entries 
-        if self.pairs_count>0:
-            self.fxml.write(' </contacts>\n')
-            self.pairs_count=0
-        if self.manypart_count==0: self.fxml.write(' <manyparticle>\n')
+        #if self.pairs_count>0:
+        #    self.fxml.write(' </contacts>\n')
+        #    self.pairs_count=0
+        if self.manypart_count==0: self.fmod.write(' <manyparticle>\n')
         nentries,nparticles=groups.shape
-        self.fxml.write('  <manyparticle_type name="%s">\n'%name)
-        self.fxml.write('   <expression expr="%d|%s"/>\n'%(nparticles,expression))
-        for p in params: self.fxml.write('   <parameter>%s</parameter>\n'%p)
+        self.fmod.write('  <manyparticle_type name="%s">\n'%name)
+        self.fmod.write('   <expression expr="%d|%s"/>\n'%(nparticles,expression))
+        for p in params: self.fmod.write('   <parameter>%s</parameter>\n'%p)
 
         groups=1+np.transpose(groups)
         for x in range(nentries): 
-            self.fxml.write('   <interaction')
+            self.fmod.write('   <interaction')
             for y in range(nparticles):
-                self.fxml.write(' %s="%d"'%(chr(ord('i')+y),groups[y][x]))
-            for p in params: self.fxml.write(' %s="%e"'%(p,params[p][x]))
-            self.fxml.write('/>\n')
-        self.fxml.write('  </manyparticle_type>\n')
+                self.fmod.write(' %s="%d"'%(chr(ord('i')+y),groups[y][x]))
+            for p in params: self.fmod.write(' %s="%e"'%(p,params[p][x]))
+            self.fmod.write('/>\n')
+        self.fmod.write('  </manyparticle_type>\n')
         self.manypart_count+=1
         return 
 
@@ -1563,7 +1594,10 @@ class OpenSMOGXML:
 
     def __del__(self):
         if self.pairs_count>0:self.fxml.write(' </contacts>\n')
-        elif self.manypart_count>0: self.fxml.write(' </manyparticle>\n')
+        if self.manypart_count>0: 
+            self.fmod.write(' </manyparticle>\n')
+            self.fmod.write('</OpenSMOGmod>\n')
+            self.fmod.close()
         self.fxml.write('</OpenSMOGforces>\n')
         self.fxml.close()
 
@@ -2309,7 +2343,7 @@ class Topology:
                 if self.CGlevel["prot"]==1: cgpdb.loadfile(infile=self.allatomdata[i].prot.bb_file,renumber=False)
                 elif self.CGlevel["prot"]==2: cgpdb.loadfile(infile=self.allatomdata[i].prot.sc_file,renumber=False)
                 prot_topfile = "prot%s_%s"%(fileindex,outtop)
-                if self.opt.opensmog: self.prot_xmlfile=OpenSMOGXML(xmlfile="prot%s_%s"%(fileindex,self.opt.xmlfile),coulomb=charge,nbshift=self.opt.nbshift)
+                if self.opt.opensmog: self.prot_xmlfile=OpenSMOGXML(xmlfile="prot%s_%s"%(fileindex,self.opt.xmlfile),coulomb=charge,nbshift=self.opt.nbshift,dihed2xml=self.opt.dihed2xml)
                 with open(prot_topfile,"w+") as ftop:
                     print (">>> writing Protein GROMACS toptology", prot_topfile)
                     proc_data_p = Preprocess(aa_pdb=self.allatomdata[i],pdbindex=fileindex)
@@ -2332,7 +2366,7 @@ class Topology:
                 if self.CGlevel["nucl"]==1: cgpdb.loadfile(infile=self.allatomdata[i].nucl.bb_file,renumber=False)
                 elif self.CGlevel["nucl"] in (3,5): cgpdb.loadfile(infile=self.allatomdata[i].nucl.sc_file,renumber=False)
                 nucl_topfile = "nucl%s_%s"%(fileindex,outtop)
-                if self.opt.opensmog: self.nucl_xmlfile=OpenSMOGXML(xmlfile="nucl%s_%s"%(fileindex,self.opt.xmlfile),coulomb=charge,nbshift=self.opt.nbshift)
+                if self.opt.opensmog: self.nucl_xmlfile=OpenSMOGXML(xmlfile="nucl%s_%s"%(fileindex,self.opt.xmlfile),coulomb=charge,nbshift=self.opt.nbshift,dihed2xml=self.opt.dihed2xml)
                 with open(nucl_topfile,"w+") as ftop:
                     print (">>> writing RNA/DNA GROMACS toptology", nucl_topfile)
                     proc_data_n = Preprocess(aa_pdb=self.allatomdata[i],pdbindex=fileindex)

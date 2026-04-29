@@ -6,7 +6,7 @@
 
 	A toolkit for generating input files for performing Molecular Dynamics
 	Simulations (MD) of Coarse-Grain Structure Based Models (CG-SBM) on 
-	GROMACS (4.5.4/4.6.7/5.1.4) and/or OpenSMOG (v1.1.1)
+	GROMACS (4.5.4/4.6.7/5.1.4) and/or OpenSMOG (v1.1.1+)
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,7 +27,9 @@
     A copy of the GNU General Public License is included along with
 	this program.
 
-usage: python submit.py --help
+Installation: pip install . # in the repo directory
+Usage: python submit.py --help # without pip install 
+       submit-cli --help       # after pip install 
 
 Citation:-
 	Publication:
@@ -119,7 +121,8 @@ class ModelDir:
 		return 1
 
 class CleanUP:
-	def __init__(self,grosuffix=str(),topsuffix=str(),xmlsuffix=str(),coulomb=Charge(),enrgrps=[],box_width=500.0,fillstatus=False,gen_cg=False):
+	def __init__(self,outdir,grosuffix=str(),topsuffix=str(),xmlsuffix=str(),modxml=False,coulomb=Charge(),enrgrps=[],box_width=500.0,fillstatus=False,gen_cg=False):
+		self.common_dir=outdir
 		self.coulomb=coulomb
 		self.enrgrps=enrgrps
 		self.createDir()
@@ -138,6 +141,10 @@ class CleanUP:
 		if len(xmlsuffix)>0: 
 			self.moveFiles(f_suffix=xmlsuffix,out_subdir="GRO_TOP_XML")
 			self.moveFiles(f_middle=xmlsuffix)
+			if modxml: 
+				modsuffix=xmlsuffix.replace(".xml",".mod.xml")
+				self.moveFiles(f_suffix=modsuffix,out_subdir="GRO_TOP_XML")
+				self.moveFiles(f_middle=modsuffix)
 		self.moveFiles(f_prefix="table",f_suffix=".xvg",out_subdir="Tables")
 		self.moveFiles(f_prefix="interactions",f_suffix=".dat",out_subdir="model_params")
 		self.moveFiles(f_prefix="rad",f_suffix=".dat",out_subdir="model_params")
@@ -148,22 +155,21 @@ class CleanUP:
 			self.genbox(grosuffix=grosuffix,topsuffix=topsuffix,box_width=box_width,gen_cg=gen_cg)	
 
 	def createDir(self):
-		os.makedirs("SuBMIT_Output/RenumberedPDB_CMap",exist_ok=True)
-		os.makedirs("SuBMIT_Output/GRO_TOP_XML",exist_ok=True)
-		os.makedirs("SuBMIT_Output/model_params",exist_ok=True)
-		os.makedirs("SuBMIT_Output/Tables",exist_ok=True)
+		os.makedirs("%s/RenumberedPDB_CMap"%self.common_dir,exist_ok=True)
+		os.makedirs("%s/GRO_TOP_XML"%self.common_dir,exist_ok=True)
+		os.makedirs("%s/model_params"%self.common_dir,exist_ok=True)
+		os.makedirs("%s/Tables"%self.common_dir,exist_ok=True)
 		return
 
 	def moveFiles(self,f_suffix=str(),f_prefix=str(),f_middle=str(),out_subdir=str()):
-		common_dir="SuBMIT_Output"
 		for filename in os.listdir():
 			if filename.startswith(f_prefix) and filename.endswith(f_suffix):
 				if f_middle in filename and filename!=f_suffix and filename!=f_prefix:
-					os.replace(filename,"%s/%s/%s"%(common_dir,out_subdir,filename))
+					os.replace(filename,"%s/%s/%s"%(self.common_dir,out_subdir,filename))
 		return
 	
 	def renameTables(self):
-		tabledir="SuBMIT_Output/Tables"
+		tabledir="%s/Tables"%self.common_dir
 		tablelist=[x for x in os.listdir(tabledir) if "lj" in x.lower()]
 		if len(tablelist)==0: return
 		if len(self.enrgrps)<=1: return
@@ -208,20 +214,20 @@ class CleanUP:
 		return
 
 	def genbox(self,grosuffix,topsuffix,box_width,gen_cg):
-		if "molecule_order.list" in os.listdir("SuBMIT_Output"):
+		if "molecule_order.list" in os.listdir(self.common_dir):
 			mol_list=[tuple(line.split()) \
-				 	for line in open("SuBMIT_Output/molecule_order.list")\
+				 	for line in open("%s/molecule_order.list"%self.common_dir)\
 					if not line.startswith(("#","@",":"))]
 			if len(mol_list)==1 and int(mol_list[0][-1])==1:
-				open("SuBMIT_Output/%s"%grosuffix,"w+").write(\
-					open("SuBMIT_Output/GRO_TOP_XML/%s_%s"%(mol_list[0][1],grosuffix)).read())
+				open("%s/%s"%(self.common_dir,grosuffix),"w+").write(\
+					open("%s/GRO_TOP_XML/%s_%s"%(self.common_dir,mol_list[0][1],grosuffix)).read())
 			else:			
 				assert len(mol_list)!=0
 				if np.sum(np.intp(np.transpose(mol_list)[0]))==0:
 					mol_list=[("%s_%s"%(x[1],grosuffix),int(x[2])) for x in mol_list]
 				else:
 					mol_list=[("%s_%s"%(x[1],grosuffix),int(x[2])) for x in mol_list]
-				with open('SuBMIT_Output/genbox_commands.sh','w+') as fout:
+				with open('%s/genbox_commands.sh'%self.common_dir,'w+') as fout:
 					for i in "xyz":fout.write("box_%s=%.3f\n"%(i,0.1*box_width))
 					fout.write("seed=1997 #default for gromacs 4.5.4\n")
 					fout.write('echo -e "EMPTY GROFILE\\n0\\n$box_x $box_y $box_z" > _temp_0.gro\n')
@@ -261,9 +267,9 @@ def main():
 	parser=argparse.ArgumentParser(description="Generate GROMACS and OpenSMOG potential files for Protein + Nucleic Acids SBM models.")
 	
 	#Predefined Models
-	parser.add_argument("--clementi2000","-clementi2000","--calpha_go2000","-calpha_go2000",action="store_true",help="Clementi et. al. 2000 CA-only model. 10.1006/jmbi.2000.3693")
-	parser.add_argument("--afsar2008","-afsar2008","--chan2008","-chan2008",action="store_true",help="Zarrine-Afsar et. al. 2008 CA-only + hydrophobic model with . 10.1073/pnas.0801874105")
-	parser.add_argument("--azia2009","-azia2009","--levy2009","-levy2009",action="store_true",help="Azia 2009 CB-CA + Debye-Huckel model. 10.1016/j.jmb.2009.08.010")
+	parser.add_argument("--clementi2000","-clementi2000","--calpha_sbm","-calpha_sbm",action="store_true",help="Clementi et. al. 2000 CA-only model. 10.1006/jmbi.2000.3693")
+	parser.add_argument("--afsar2008","-afsar2008","--chan2008","-chan2008","--hp_sbm","-hp_sbm",action="store_true",help="Zarrine-Afsar et. al. 2008 CA-only + hydrophobic model with . 10.1073/pnas.0801874105")
+	parser.add_argument("--azia2009","-azia2009","--levy2009","-levy2009","--elec_sbm","-elec_sbm",action="store_true",help="Azia 2009 CB-CA + Debye-Huckel model. 10.1016/j.jmb.2009.08.010")
 	parser.add_argument("--pal2019","-pal2019","--levy2019","-levy2019",action="store_true",help="Pal & Levy 2019 Protein CB-CA & RNA/DNA P-S-B model. 10.1371/journal.pcbi.1006768")
 	parser.add_argument("--hyeon2006","-hyeon2006","--sop2006","-sop2006",action="store_true",help="Hyeon, Dutta & Thirumalai 2006 SOP CA-only. 10.1016/j.str.2006.09.002")
 	parser.add_argument("--reddy2016","-reddy2016","--maity2016","-maity2016","--sopsc2016","-sopsc2016",action="store_true",help="Maity & Reddy 2016 SOP-SC CA-CB. 10.1021/jacs.5b11300")
@@ -285,13 +291,14 @@ def main():
 
 	#output
 	parser.add_argument("--gen_cg","-gen_cg",action='store_true', help="Only Generate CG structure without generating topology .top/.xml files")
+	parser.add_argument("--outdir","-outdir",help="Output Directory. Default: SuBMIT_Output",default="SuBMIT_Output")
 	parser.add_argument("--outtop","-outtop",help='Gromacs topology file output name (tool adds prefix nucl_  and prot_ for independednt files). Default: gromacs.top')
 	parser.add_argument("--outgro","-outgro", help='Name for output .gro file.(tool adds prefix nucl_  and prot_ for independednt files). Default: gromacs.gro')
 	parser.add_argument("--box","-box", help='Width of the cubic simulation box. Default: 500.0 Å. Use 0 for no box.')
 	parser.add_argument("--voxel","-voxel","--box_cell","-box_cell", help='Width of the minimal cubic volume unit, used to fill the simulation box. Default: 1.618 Å')
 	parser.add_argument("--outxml","-outxml", help='Name for output .xml (openSMOG) file.(tool adds prefix nucl_  and prot_ for independednt files). Default: opensmog.xml (and opensmog.top)')
 	parser.add_argument("--opensmog", "-opensmog",action='store_true', help="Generate files ,xml and .top files for openSMOG. Default: False")
-	parser.add_argument("--dihed2xml", "-dihed2xml",action='store_true', help="Write torsions to opensmog xml. Adds conditon for angle->n*pi. Only supported for OpensMOGmod:https://github.com/sglabncbs/OpenSMOGmod. Default: False")
+	parser.add_argument("--dihed2xml", "-dihed2xml",action='store_true', help="Write torsions to opensmog xml. Adds conditon for angle->n*pi. Only supported with OpensMOGmod plugin :https://github.com/sglabncbs/OpenSMOGmod. Default: False")
 
 	#level of coarse-graining
 	parser.add_argument("--prot_cg", "-prot_cg", type=int, help="Level of Amino-acid coarse-graining 1 for CA-only, 2 for CA+CB. Dafault: 2 (CA+CB)")
@@ -1255,6 +1262,6 @@ def main():
 			print ("> Combined topology file(s) generated but failed to generate combined structure file. Try using genbox_commands.sh script (requires GROMACS) or run again with --gen_cg & different box width --box")
 		if args.gen_cg:
 			print ("> Failed to generate combined structure file. Try using genbox_commands.sh script (requires GROMACS) or run again with --gen_cg & different box width --box")
-	CleanUP(grosuffix=grofile,topsuffix=topfile,xmlsuffix=opt.xmlfile,coulomb=charge,enrgrps=groups,box_width=box_width,fillstatus=fill_status,gen_cg=args.gen_cg)
+	CleanUP(outdir=args.outdir,grosuffix=grofile,topsuffix=topfile,xmlsuffix=opt.xmlfile,modxml=opt.dihed2xml,coulomb=charge,enrgrps=groups,box_width=box_width,fillstatus=fill_status,gen_cg=args.gen_cg)
 if __name__ == '__main__':
     main()
