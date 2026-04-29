@@ -36,13 +36,16 @@ Citation:-
 	Authors: Digvijay L. Prakash, Arkadeep Banerjee & Shachi Gosavi
 """
 
-import os
+import os,sys
+from pathlib import Path
+subdir=os.path.dirname(os.path.abspath(__file__))
+repdir=str(os.path.dirname(subdir))
+if repdir not in sys.path: sys.path.insert(0,repdir)
 import argparse
 import numpy as np
 from typing import NamedTuple, Dict
-from pathlib import Path
-from PDB_IO import PDB_IO,Nucl_Data,Prot_Data,Fill_Box
-from topology import *
+from SuBMIT.PDB_IO import PDB_IO,Nucl_Data,Prot_Data,Fill_Box
+from SuBMIT.topology import *
 
 class Options(Dict):
 	opensmog=False
