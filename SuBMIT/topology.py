@@ -460,7 +460,6 @@ class Preprocess:
             pairs += temp_p; chains += temp_c; weights += temp_w; distances += temp_d
             del (temp_p,temp_c,temp_d,temp_w)
             if writefile:
-                print (tagforfile,cmap.file[file_ndx])
                 fcg=open(tagforfile+".CGcont","w+")
                 temp_c=list()
                 for c in chains:
@@ -3754,6 +3753,7 @@ class Baratam2024(SOPSC_IDR):
     def write_protein_atomtypes(self,fout,type,rad,seq,data):
         print (">> Writing atomtypes section")
         self.domains=self.__write_unfolded_cgpdb__(rad=rad,data=data)
+
         #1:CA model or 2:CA+CB model
         fout.write('%s\n'%("[ atomtypes ]"))
         fout.write(6*"%s".ljust(5)%("; name","mass","charge","ptype","C6(or C10)","C12")+"\n")
@@ -3780,7 +3780,6 @@ class Baratam2024(SOPSC_IDR):
             #if s in self.idrdata.seq:
                 #self.excl_volume[bead+"i"]=self.excl_volume[bead]
                 #fout.write(" %7s %8.3f %8.3f %s %e %e; %s\n"%(str(bead+"i").ljust(4),1.0,0.0,"A".ljust(4),0,C12,"CB"))
-          
         return 0
 
     def write_protein_nonbondparams(self,fout,type,excl_rule,data):
@@ -3922,8 +3921,12 @@ class Baratam2024(SOPSC_IDR):
                         Q[atype+str(dx)]=Q[atype]
                         atype=atype+str(dx)
                     if "CA" in atinfo:
-                        if atype.endswith("i"): assert self.domains[atinfo]==0
-                        else: assert(self.domains[atinfo]==dx)
+                        if atype.endswith("i"): 
+                            checkinfo=[self.idrdata.cid[atinfo[0]]]+list(atinfo)[1:]
+                            assert self.domains[tuple(checkinfo)]==0
+                        else: 
+                            checkinfo=[self.ordered.cid[atinfo[0]]]+list(atinfo)[1:]
+                            assert(self.domains[tuple(checkinfo)]==dx)
                     fout.write("  %5d %5s %4d %5s %5s %5d %5.2f %5.2f\n"%(atnum,atype,resnum,resname,atname,atnum,Q[atype],mass))
                     self.atomtypes.append(atype)
                     prev_atype=atype

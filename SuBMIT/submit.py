@@ -47,6 +47,7 @@ from typing import NamedTuple, Dict
 from SuBMIT.PDB_IO import PDB_IO,Nucl_Data,Prot_Data,Fill_Box
 from SuBMIT.topology import *
 
+
 class Options(Dict):
 	opensmog=False
 	xmlfile=str()
@@ -1212,7 +1213,7 @@ def main():
 				modeller_found=True
 			except: modeller_found=False
 			if modeller_found and args.aa_pdb: 
-				user_option=input(">>> MODELLER found. Do you want to use it for generating starting structure file? [y/N (default: N)]").upper()
+				user_option="N" #input(">>> MODELLER found. Do you want to use it for generating starting structure file? [y/N (default: N)]").upper()
 				assert user_option in "YN", "Error input can be either Y or N"
 				if user_option == "Y":
 					modeller=PDB_IO()
