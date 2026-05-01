@@ -3263,15 +3263,12 @@ class SOPSC_IDR(Reddy2016):
         self.ordered=data.allatpdb.prot
 
         residues = dict()
-        for x in self.ordered.res: 
-            new_x=tuple([self.ordered.cid[x[0]]]+list(x)[1:])
-            residues[new_x]=[1,x[0]]
-        for x in self.idrdata.res:
-            new_x=tuple([self.idrdata.cid[x[0]]]+list(x)[1:])
-            residues[new_x]=[0,x[0]]
+        for x in self.ordered.res: residues[x]=[1,x[0]]
+        for x in self.idrdata.res: residues[x]=[0,x[0]]
 
         ordered_section = {x:residues[x] for x in residues if "CA" in x}
         residues = list(ordered_section.keys()); residues.sort()
+
         prev_idx,idx=0,0
         for x in residues: 
             #assign ordered section index
@@ -3296,6 +3293,9 @@ class SOPSC_IDR(Reddy2016):
         with open(outfasta,"w+") as fout:
             for x in range(len(residues)):
                 chain,rnum,rname,atname = residues[x]
+                if ordered_section[residues[x]][0]!=0: 
+                    chain=self.ordered.cid[chain]
+                else: chain=self.idrdata.cid[chain]
                 assert atname=="CA"
                 if x==0 or chain!=prev_chain or rnum-prev_rnum not in (0,1):
                     fout.write("\n\n>chain:%s:%s\n"%(chain,rnum))
@@ -3654,26 +3654,34 @@ class SOPSC_IDR(Reddy2016):
         scscmat,sigmat=data.Interactions(pairs=cmap.custom_pairs)
         assert len(sigmat)==0
 
-        CA_atn = {data.CA_atn[c][r]:self.atomtypes[data.CA_atn[c][r]] for c in data.CA_atn for r in data.CA_atn[c]}
-        CB_atn = {data.CB_atn[c][r]:self.atomtypes[data.CB_atn[c][r]] for c in data.CB_atn for r in data.CB_atn[c]}
+
+        #for c in data.CA_atn:
+        #    print (c,len(data.CA_atn[c]))
+        #    print (c,len(self.unfolded_data.CA_atn[c]))
+        #   for r in data.CA_atn[c]:
+        #        print (r,self.atomtypes[data.CA_atn[c][r]],self.atomtypes[self.unfolded_data.CA_atn[c][r]])
+        u_data=self.unfolded_data
+        CA_atn = {u_data.CA_atn[c][r]:self.atomtypes[u_data.CA_atn[c][r]] for c in u_data.CA_atn for r in u_data.CA_atn[c]}
+        CB_atn = {u_data.CB_atn[c][r]:self.atomtypes[u_data.CB_atn[c][r]] for c in u_data.CB_atn for r in u_data.CB_atn[c]}
+
         all_atn = CA_atn.copy()
         all_atn.update(CB_atn.copy())
         eps_bbbb = 0.45*self.fconst.caltoj
         eps_bbsc = 0.45*self.fconst.caltoj
         Kboltz = self.fconst.Kboltz #*self.fconst.caltoj/self.fconst.caltoj
         old2new_atn=dict()
-        for c in self.unfolded_data.CA_atn:
-            for r in self.unfolded_data.CA_atn[c]:
+        for c in u_data.CA_atn:
+            for r in u_data.CA_atn[c]:
                 c0,r0=self.new2old_res[(c,r)]
                 assert r0==r
                 if c0 in data.CA_atn and r0 in data.CA_atn[c0]:
-                    old2new_atn[data.CA_atn[c0][r0]]=self.unfolded_data.CA_atn[c][r]
-        for c in self.unfolded_data.CB_atn:
-            for r in self.unfolded_data.CB_atn[c]:
+                    old2new_atn[data.CA_atn[c0][r0]]=u_data.CA_atn[c][r]
+        for c in u_data.CB_atn:
+            for r in u_data.CB_atn[c]:
                 c0,r0=self.new2old_res[(c,r)]
                 assert r0==r
                 if c0 in data.CB_atn and r0 in data.CB_atn[c0]:
-                    old2new_atn[data.CB_atn[c0][r0]]=self.unfolded_data.CB_atn[c][r]
+                    old2new_atn[data.CB_atn[c0][r0]]=u_data.CB_atn[c][r]
             
         for index in range(len(data.contacts)):
             pairs,chains,dist,eps = data.contacts[index]
@@ -3921,12 +3929,12 @@ class Baratam2024(SOPSC_IDR):
                         Q[atype+str(dx)]=Q[atype]
                         atype=atype+str(dx)
                     if "CA" in atinfo:
-                        if atype.endswith("i"): 
-                            checkinfo=[self.idrdata.cid[atinfo[0]]]+list(atinfo)[1:]
-                            assert self.domains[tuple(checkinfo)]==0
-                        else: 
-                            checkinfo=[self.ordered.cid[atinfo[0]]]+list(atinfo)[1:]
-                            assert(self.domains[tuple(checkinfo)]==dx)
+                        if atype.endswith("i"): assert self.domains[atinfo]==0
+                            #checkinfo=[self.idrdata.cid[atinfo[0]]]+list(atinfo)[1:]
+                            #assert self.domains[tuple(checkinfo)]==0
+                        else: assert(self.domains[atinfo]==dx) 
+                            #checkinfo=[self.ordered.cid[atinfo[0]]]+list(atinfo)[1:]
+                            #assert(self.domains[tuple(checkinfo)]==dx)
                     fout.write("  %5d %5s %4d %5s %5s %5d %5.2f %5.2f\n"%(atnum,atype,resnum,resname,atname,atnum,Q[atype],mass))
                     self.atomtypes.append(atype)
                     prev_atype=atype
@@ -3939,28 +3947,32 @@ class Baratam2024(SOPSC_IDR):
         data.Pairs(cmap=cmap,group="prot")
         assert cmap.custom_pairs and cmap.type in (-1,0,2) and cmap.func==1
         scscmat,sigmat=data.Interactions(pairs=cmap.custom_pairs)
+
+        u_data=self.unfolded_data
+
         assert len(sigmat)==0
 
-        CA_atn = {data.CA_atn[c][r]:self.atomtypes[data.CA_atn[c][r]] for c in data.CA_atn for r in data.CA_atn[c]}
-        CB_atn = {data.CB_atn[c][r]:self.atomtypes[data.CB_atn[c][r]] for c in data.CB_atn for r in data.CB_atn[c]}
+        CA_atn = {u_data.CA_atn[c][r]:self.atomtypes[u_data.CA_atn[c][r]] for c in u_data.CA_atn for r in u_data.CA_atn[c]}
+        CB_atn = {u_data.CB_atn[c][r]:self.atomtypes[u_data.CB_atn[c][r]] for c in u_data.CB_atn for r in u_data.CB_atn[c]}
         all_atn = CA_atn.copy()
         all_atn.update(CB_atn.copy())
+
         eps_bbbb = 0.5*self.fconst.caltoj
         eps_bbsc = 0.5*self.fconst.caltoj
         Kboltz = self.fconst.Kboltz #*self.fconst.caltoj/self.fconst.caltoj
         old2new_atn=dict()
-        for c in self.unfolded_data.CA_atn:
-            for r in self.unfolded_data.CA_atn[c]:
+        for c in u_data.CA_atn:
+            for r in u_data.CA_atn[c]:
                 c0,r0=self.new2old_res[(c,r)]
                 assert r0==r
                 if c0 in data.CA_atn and r0 in data.CA_atn[c0]:
-                    old2new_atn[data.CA_atn[c0][r0]]=self.unfolded_data.CA_atn[c][r]
-        for c in self.unfolded_data.CB_atn:
-            for r in self.unfolded_data.CB_atn[c]:
+                    old2new_atn[data.CA_atn[c0][r0]]=u_data.CA_atn[c][r]
+        for c in u_data.CB_atn:
+            for r in u_data.CB_atn[c]:
                 c0,r0=self.new2old_res[(c,r)]
                 assert r0==r
                 if c0 in data.CB_atn and r0 in data.CB_atn[c0]:
-                    old2new_atn[data.CB_atn[c0][r0]]=self.unfolded_data.CB_atn[c][r]
+                    old2new_atn[data.CB_atn[c0][r0]]=u_data.CB_atn[c][r]
             
         for index in range(len(data.contacts)):
             pairs,chains,dist,eps = data.contacts[index]
