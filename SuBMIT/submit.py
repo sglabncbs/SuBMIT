@@ -32,7 +32,9 @@ Usage: python submit.py --help # without pip install
        submit-cli --help       # after pip install 
 
 Citation:-
-	Publication:
+	Publication: SuBMIT: A Software Toolkit for Facilitating Simulations 
+	of Coarse-Grained Structure-Based Models of Biomolecules.
+	https://doi.org/10.64898/2026.05.18.725912
 	Authors: Digvijay L. Prakash, Arkadeep Banerjee & Shachi Gosavi
 """
 
