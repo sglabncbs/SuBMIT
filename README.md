@@ -15,7 +15,7 @@ cd SuBMIT/
 pip install .
 ```
 
-## *Examples*. 
+## *Examples*
 ### Model presets allows user to auto-select parameters based on predefined models. </br>
 ### 1. CA-SBM (Clementi et al., 2000. https://doi.org/10.1006/jmbi.2000.3693) 
 ##### using without installation
