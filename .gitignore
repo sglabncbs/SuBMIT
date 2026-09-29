@@ -1,0 +1,7 @@
+#ignoring temp files
+__pycache__
+SuBMIT.egg-info
+build
+SuBMIT_Output
+delete
+
