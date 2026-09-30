@@ -516,7 +516,7 @@ class Preprocess:
                         if len(self.CB_atn) == 0:   #0 for CA
                             atomgroup.append(tuple(list(r[:2])+[0]))
                         else:                       #1 for CB
-                            atomgroup.append(tuple(list(r[:2])+[int(r[-1] not in ("N","C","CA","O"))]))
+                            atomgroup.append(tuple(list(r[:2])+[int(r[-1] not in ["N","CA","HA2","HA","C","O","H","HN","OXT","OT1","OT2"])]))
                 if len(r[2])<=2:
                     mol_id.append(0)
                     if len(self.P_atn) != 0:
